@@ -1,0 +1,132 @@
+substitutions:
+  name: esphome-web-c7b550
+  friendly_name: esp32-s3-telefonw48
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: false
+  platformio_options:
+    board_build.flash_mode: dio
+  project:
+    name: esphome.web
+    version: '1.0'
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: arduino
+
+# Enable Home Assistant API
+api:
+  encryption: 
+    key: #ADD YOUR KEY HERE
+
+# Allow Over-The-Air updates
+ota:
+  platform: esphome
+
+wifi:
+  on_connect:
+    - delay: 5s  # Gives time for improv results to be transmitted
+    - ble.disable:
+  on_disconnect:
+    - ble.enable:
+  ap:   # Set up a wifi access point
+
+captive_portal:
+
+dashboard_import:
+  package_import_url: github://esphome/firmware/esphome-web/esp32s3.yaml@v2
+  import_full_config: true
+
+# Sets up Bluetooth LE (Only on ESP32) to allow the user
+# to provision wifi credentials to the device.
+esp32_improv:
+  authorizer: none
+
+
+i2s_audio:
+  - id: i2s_in
+    i2s_lrclk_pin: GPIO17 #WS Pin from the INMP441 Microphone
+    i2s_bclk_pin: GPIO16 #SCK Pin from the INMP441 Microphone
+
+microphone:
+  - platform: i2s_audio
+    adc_type: external
+    pdm: false
+    id: mic_i2s
+    channel: left
+    bits_per_sample: 32bit
+    i2s_audio_id: i2s_in
+    i2s_din_pin: GPIO13  #SD Pin from the INMP441 Microphone
+
+media_player:
+  - platform: i2s_audio
+    name: "esp_speaker"
+    id: media_player_speaker
+    i2s_audio_id: i2s_in
+    dac_type: external
+    i2s_dout_pin: GPIO09   #  DIN Pin of the MAX98357A Audio Amplifier
+    mode: mono
+    
+voice_assistant:
+  microphone: mic_i2s
+  id: va
+  noise_suppression_level: 2
+  auto_gain: 31dBFS
+  volume_multiplier: 10.0
+  use_wake_word: false
+  media_player: media_player_speaker #Interner Media-Player über GPIO
+  on_listening: #Switches the green LED on and red off when listening
+    - switch.turn_on:
+        id: Status_LED_Green
+    - switch.turn_off:
+        id: Status_LED_Red
+  on_end:
+    - switch.turn_off:
+        id: Status_LED_Green
+    - switch.turn_on:
+        id: Status_LED_Red
+    - if:
+        condition:
+          binary_sensor.is_on: Schalter_Hoerer
+        then:
+          - voice_assistant.start_continuous
+ 
+
+binary_sensor:
+  - platform: gpio
+    pin: 
+      number: GPIO40 # switch from the handset
+      inverted: True
+      mode: 
+        input: True
+        pullup: False
+    name: Schalter Hörer
+    id: Schalter_Hoerer
+    device_class: opening
+    filters: 
+      - delayed_off: 0.3s
+    on_release: 
+      then:
+        - voice_assistant.start_continuous
+        - switch.turn_on: Status_LED_Red
+    on_press: 
+      then:
+        - voice_assistant.stop
+        - media_player.stop: #Stops the loudspeaker to be able to hear again
+        - switch.turn_off: Status_LED_Red
+
+switch:
+  - platform: gpio # LED green
+    name: Status_LED_Green
+    id: Status_LED_Green
+    pin: GPIO42
+    inverted: True
+
+  - platform: gpio # LED red
+    name: Status_LED_Red
+    id: Status_LED_Red
+    pin: GPIO41
+    inverted: True
