@@ -1,4 +1,5 @@
 substitutions:
+  # Do not change: the node name determines the entity IDs in Home Assistant.
   name: esphome-web-c7b550
   friendly_name: esp32-s3-telefonw48
 
@@ -6,25 +7,37 @@ esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   name_add_mac_suffix: false
+  # The speaker media player used below requires 2026.4.0 or newer.
+  min_version: 2026.4.0
   platformio_options:
     board_build.flash_mode: dio
   project:
-    name: esphome.web
-    version: '1.0'
+    name: gpsm2.tischfernsprecher-w48
+    version: '2.0.0'
 
 esp32:
   board: esp32-s3-devkitc-1
   framework:
-    type: arduino
+    # ESP-IDF is the default since ESPHome 2026.1.0 and is what the speaker
+    # media player expects. Do not switch back to arduino.
+    type: esp-idf
+
+# The board is an ESP32-S3 N16R8: 16 MB flash, 8 MB octal PSRAM.
+# The audio decoders and the media player buffer live here.
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
 
 # Enable Home Assistant API
 api:
-  encryption: 
-    key: #ADD YOUR KEY HERE
+  encryption:
+    key: !secret api_encryption_key
 
 # Allow Over-The-Air updates
 ota:
-  platform: esphome
+  - platform: esphome
 
 wifi:
   on_connect:
@@ -36,16 +49,15 @@ wifi:
 
 captive_portal:
 
-dashboard_import:
-  package_import_url: github://esphome/firmware/esphome-web/esp32s3.yaml@v2
-  import_full_config: true
-
 # Sets up Bluetooth LE (Only on ESP32) to allow the user
 # to provision wifi credentials to the device.
 esp32_improv:
   authorizer: none
 
-
+# Microphone and amplifier share one I2S bus, because they share the BCLK and
+# LRCLK wires in the hardware. ESPHome serialises access with a mutex, so
+# recording and playback alternate instead of running at the same time - which
+# is exactly what this device does anyway.
 i2s_audio:
   - id: i2s_in
     i2s_lrclk_pin: GPIO17 #WS Pin from the INMP441 Microphone
@@ -61,15 +73,39 @@ microphone:
     i2s_audio_id: i2s_in
     i2s_din_pin: GPIO13  #SD Pin from the INMP441 Microphone
 
-media_player:
+speaker:
   - platform: i2s_audio
-    name: "esp_speaker"
-    id: media_player_speaker
+    id: i2s_speaker_out
     i2s_audio_id: i2s_in
     dac_type: external
     i2s_dout_pin: GPIO09   #  DIN Pin of the MAX98357A Audio Amplifier
-    mode: mono
-    
+    channel: mono
+    sample_rate: 48000
+    bits_per_sample: 16bit
+  # The announcement and media pipelines are not allowed to share one speaker,
+  # so the mixer splits the single physical amplifier into two virtual ones.
+  - platform: mixer
+    id: mixer_speaker
+    output_speaker: i2s_speaker_out
+    source_speakers:
+      - id: announcement_speaker
+      - id: media_speaker
+
+media_player:
+  - platform: speaker
+    name: "esp_speaker"
+    id: media_player_speaker
+    announcement_pipeline:
+      speaker: announcement_speaker
+      format: FLAC
+      sample_rate: 48000
+      num_channels: 1
+    media_pipeline:
+      speaker: media_speaker
+      format: FLAC
+      sample_rate: 48000
+      num_channels: 1
+
 voice_assistant:
   microphone: mic_i2s
   id: va
@@ -93,26 +129,26 @@ voice_assistant:
           binary_sensor.is_on: Schalter_Hoerer
         then:
           - voice_assistant.start_continuous
- 
+
 
 binary_sensor:
   - platform: gpio
-    pin: 
+    pin:
       number: GPIO40 # switch from the handset
       inverted: True
-      mode: 
+      mode:
         input: True
         pullup: False
     name: Schalter Hörer
     id: Schalter_Hoerer
     device_class: opening
-    filters: 
+    filters:
       - delayed_off: 0.3s
-    on_release: 
+    on_release:
       then:
         - voice_assistant.start_continuous
         - switch.turn_on: Status_LED_Red
-    on_press: 
+    on_press:
       then:
         - voice_assistant.stop
         - media_player.stop: #Stops the loudspeaker to be able to hear again

@@ -14,8 +14,17 @@ This project transforms the vintage "Tischfernsprecher W 48" telephone into a vo
 * [chenyang RJ45 Stretch Spiral Cable Cat6 8P8C UTP](https://www.amazon.de/dp/B0CF2B2PCK) (at least 2 meters, 7 wires needed)
 
 ## 💻 Software Used
-* ESPHome on HomeAssistant 🏠
-* [YAML configuration file](esphome-web-c7b550.yaml) 📄
+* [ESPHome](https://esphome.io/) **2026.4.0 or newer**, running as a Home Assistant add-on 🏠
+* [YAML configuration file](tischfernsprecher-w48.yaml) 📄
+
+### ⚙️ Setup
+1. Copy [`secrets.yaml.example`](secrets.yaml.example) to `secrets.yaml` next to the configuration and fill in your API encryption key (generate one with `openssl rand -base64 32`). `secrets.yaml` is git-ignored and must stay out of the repository. If you are updating an existing device, reuse the key it already has — a new key means Home Assistant can no longer reach the device.
+2. Adopt the configuration in the ESPHome dashboard and flash the device. Wi-Fi credentials are provisioned over Bluetooth (Improv), so they are not part of this file.
+3. In Home Assistant, assign an Assist pipeline to the device. Lifting the handset starts the pipeline — there is no wake word.
+
+> **ESPHome version.** This configuration uses the current audio stack (`speaker` plus `media_player: speaker`). The older `media_player: i2s_audio` platform was **removed in ESPHome 2026.4.0**, so anything built from an earlier revision of this repository will no longer compile. The ESP-IDF framework and PSRAM are required and are already set in the configuration.
+
+> **Optional: using the full 16 MB of flash.** `flash_size` is deliberately left at its default so that updates can be installed over the air. Setting `flash_size: 16MB` changes the partition table, and partition tables are not written during an OTA update — that change requires flashing over USB once.
 
 ## 🔧 Assembly Instructions
 I removed the internal components of the telephone and replaced them with the new technology. Please refer to the uploaded images for detailed steps. 🔩
