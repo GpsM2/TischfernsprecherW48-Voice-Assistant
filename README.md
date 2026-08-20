@@ -24,6 +24,18 @@ This project transforms the vintage "Tischfernsprecher W 48" telephone into a vo
 
 > **ESPHome version.** This configuration uses the current audio stack (`speaker` plus `media_player: speaker`). The older `media_player: i2s_audio` platform was **removed in ESPHome 2026.4.0**, so anything built from an earlier revision of this repository will no longer compile. The ESP-IDF framework and PSRAM are required and are already set in the configuration.
 
+### 🔄 Upgrading from an earlier revision
+
+Anyone who built this device before the 2026 rewrite is on the old node name `esphome-web-c7b550`. The node is now called `w48-phone`, which means Home Assistant creates a fresh set of entity IDs (`binary_sensor.w48_phone_handset`, `media_player.w48_phone_speaker`, and so on) and leaves the old ones behind as unavailable.
+
+After flashing, expect to:
+
+1. Delete the orphaned entities of the old node in Home Assistant.
+2. Re-point anything that referenced the old IDs — dashboards, automations, and the player entry in Music Assistant.
+3. Re-assign the Assist pipeline and the area to the device.
+
+If you would rather keep your existing entity IDs, set `substitutions: name:` back to your old node name before flashing. Everything else in this configuration works either way.
+
 > **Optional: using the full 16 MB of flash.** `flash_size` is deliberately left at its default so that updates can be installed over the air. Setting `flash_size: 16MB` changes the partition table, and partition tables are not written during an OTA update — that change requires flashing over USB once.
 
 ## 🔧 Assembly Instructions
