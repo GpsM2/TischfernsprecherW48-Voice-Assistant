@@ -1,7 +1,8 @@
 substitutions:
-  # Do not change: the node name determines the entity IDs in Home Assistant.
-  name: esphome-web-c7b550
-  friendly_name: esp32-s3-telefonw48
+  # Changing the node name renames every entity ID in Home Assistant.
+  # Check what points at the old IDs before touching this.
+  name: w48-phone
+  friendly_name: W48 Phone
 
 esphome:
   name: ${name}
@@ -13,7 +14,7 @@ esphome:
     board_build.flash_mode: dio
   project:
     name: gpsm2.tischfernsprecher-w48
-    version: '1.1.1'
+    version: '1.1.2'
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -93,7 +94,7 @@ speaker:
 
 media_player:
   - platform: speaker
-    name: "esp_speaker"
+    name: "Speaker"
     id: media_player_speaker
     announcement_pipeline:
       speaker: announcement_speaker
@@ -113,20 +114,20 @@ voice_assistant:
   auto_gain: 31dBFS
   volume_multiplier: 10.0
   use_wake_word: false
-  media_player: media_player_speaker #Interner Media-Player über GPIO
+  media_player: media_player_speaker
   on_listening: #Switches the green LED on and red off when listening
     - switch.turn_on:
-        id: Status_LED_Green
+        id: status_led_green
     - switch.turn_off:
-        id: Status_LED_Red
+        id: status_led_red
   on_end:
     - switch.turn_off:
-        id: Status_LED_Green
+        id: status_led_green
     - switch.turn_on:
-        id: Status_LED_Red
+        id: status_led_red
     - if:
         condition:
-          binary_sensor.is_on: Schalter_Hoerer
+          binary_sensor.is_on: handset
         then:
           - voice_assistant.start_continuous
 
@@ -139,30 +140,30 @@ binary_sensor:
       mode:
         input: True
         pullup: False
-    name: Schalter Hörer
-    id: Schalter_Hoerer
+    name: Handset
+    id: handset
     device_class: opening
     filters:
       - delayed_off: 0.3s
     on_release:
       then:
         - voice_assistant.start_continuous
-        - switch.turn_on: Status_LED_Red
+        - switch.turn_on: status_led_red
     on_press:
       then:
         - voice_assistant.stop
         - media_player.stop: #Stops the loudspeaker to be able to hear again
-        - switch.turn_off: Status_LED_Red
+        - switch.turn_off: status_led_red
 
 switch:
   - platform: gpio # LED green
-    name: Status_LED_Green
-    id: Status_LED_Green
+    name: Status LED Green
+    id: status_led_green
     pin: GPIO42
     inverted: True
 
   - platform: gpio # LED red
-    name: Status_LED_Red
-    id: Status_LED_Red
+    name: Status LED Red
+    id: status_led_red
     pin: GPIO41
     inverted: True
