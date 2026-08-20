@@ -1,0 +1,45 @@
+name: Build
+
+# The point of this workflow is the scheduled run. ESPHome removed the
+# i2s_audio media player in 2026.4.0 and this repository did not notice for
+# months, because nothing ever tried to build it. A weekly build against the
+# current ESPHome release turns the next breaking change into a red check
+# instead of a nasty surprise at the next flash.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build firmware
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Create secrets.yaml with throwaway values
+        # The real secrets.yaml is git-ignored, so CI supplies its own. These
+        # values only have to satisfy validation - the firmware is never run.
+        run: |
+          cat > secrets.yaml <<'EOF'
+          api_encryption_key: "TjhOWTZQZ0lqSFNPbkJTZ1J6dnpvM3RmZmpGZzMxRnI="
+          wifi_ssid: "ci-build"
+          wifi_password: "ci-build-placeholder"
+          EOF
+
+      - name: Compile
+        # Compiling, not just validating. `esphome config` checks the YAML and
+        # generates no C++ at all, so it cannot catch things like an ID that
+        # collides with a component namespace - which is exactly what broke
+        # the build once already.
+        uses: esphome/build-action@v8.0.0
+        with:
+          yaml-file: tischfernsprecher-w48.yaml
+          version: latest
