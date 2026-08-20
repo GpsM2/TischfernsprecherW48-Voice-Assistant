@@ -14,7 +14,7 @@ esphome:
     board_build.flash_mode: dio
   project:
     name: gpsm2.tischfernsprecher-w48
-    version: '1.1.2'
+    version: '1.1.3'
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -41,19 +41,14 @@ ota:
   - platform: esphome
 
 wifi:
-  on_connect:
-    - delay: 5s  # Gives time for improv results to be transmitted
-    - ble.disable:
-  on_disconnect:
-    - ble.enable:
-  ap:   # Set up a wifi access point
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Fallback access point. If the configured network is unreachable, the device
+  # opens its own and serves the captive portal below, so it can be recovered
+  # without opening the housing.
+  ap:
 
 captive_portal:
-
-# Sets up Bluetooth LE (Only on ESP32) to allow the user
-# to provision wifi credentials to the device.
-esp32_improv:
-  authorizer: none
 
 # Microphone and amplifier share one I2S bus, because they share the BCLK and
 # LRCLK wires in the hardware. ESPHome serialises access with a mutex, so

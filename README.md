@@ -18,8 +18,8 @@ This project transforms the vintage "Tischfernsprecher W 48" telephone into a vo
 * [YAML configuration file](tischfernsprecher-w48.yaml) 📄
 
 ### ⚙️ Setup
-1. Copy [`secrets.yaml.example`](secrets.yaml.example) to `secrets.yaml` next to the configuration and fill in your API encryption key (generate one with `openssl rand -base64 32`). `secrets.yaml` is git-ignored and must stay out of the repository. If you are updating an existing device, reuse the key it already has — a new key means Home Assistant can no longer reach the device.
-2. Adopt the configuration in the ESPHome dashboard and flash the device. Wi-Fi credentials are provisioned over Bluetooth (Improv), so they are not part of this file.
+1. Copy [`secrets.yaml.example`](secrets.yaml.example) to `secrets.yaml` next to the configuration and fill in your Wi-Fi credentials and an API encryption key (generate one with `openssl rand -base64 32`). `secrets.yaml` is git-ignored and must stay out of the repository. If you are updating an existing device, reuse the key it already has — a new key means Home Assistant can no longer reach the device.
+2. Adopt the configuration in the ESPHome dashboard and flash the device. It joins the configured network on its own; if that network is unreachable it opens its own access point and serves a captive portal, so it can be recovered without opening the housing.
 3. In Home Assistant, assign an Assist pipeline to the device. Lifting the handset starts the pipeline — there is no wake word.
 
 > **ESPHome version.** This configuration uses the current audio stack (`speaker` plus `media_player: speaker`). The older `media_player: i2s_audio` platform was **removed in ESPHome 2026.4.0**, so anything built from an earlier revision of this repository will no longer compile. The ESP-IDF framework and PSRAM are required and are already set in the configuration.
