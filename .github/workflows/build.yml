@@ -32,6 +32,7 @@ jobs:
           api_encryption_key: "TjhOWTZQZ0lqSFNPbkJTZ1J6dnpvM3RmZmpGZzMxRnI="
           wifi_ssid: "ci-build"
           wifi_password: "ci-build-placeholder"
+          ota_esphome_key: "ci-build-placeholder"
           EOF
 
       - name: Compile
