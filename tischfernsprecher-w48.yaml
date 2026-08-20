@@ -14,7 +14,7 @@ esphome:
     board_build.flash_mode: dio
   project:
     name: gpsm2.tischfernsprecher-w48
-    version: '1.1.3'
+    version: '1.1.6'
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -23,11 +23,11 @@ esp32:
     # media player expects. Do not switch back to arduino.
     type: esp-idf
 
-# The board is an ESP32-S3 N16R8: 16 MB flash, 8 MB octal PSRAM.
-# The audio decoders and the media player buffer live here.
-psram:
-  mode: octal
-  speed: 80MHz
+# No psram: block on purpose. The board is sold as an N16R8, which would mean
+# 8 MB of octal PSRAM, but this one reports none: with mode octal the second
+# stage bootloader hangs before it prints anything, and with mode quad the
+# device boots and logs "PSRAM: Available: NO". Everything below is therefore
+# sized for internal RAM only.
 
 logger:
 
@@ -39,6 +39,10 @@ api:
 # Allow Over-The-Air updates
 ota:
   - platform: esphome
+    # The running firmware is what checks this password, not the one being
+    # uploaded. Changing the value means the next OTA is rejected and the
+    # device has to be flashed over USB once.
+    password: !secret ota_esphome_key
 
 wifi:
   ssid: !secret wifi_ssid
@@ -51,9 +55,10 @@ wifi:
 captive_portal:
 
 # Microphone and amplifier share one I2S bus, because they share the BCLK and
-# LRCLK wires in the hardware. ESPHome serialises access with a mutex, so
-# recording and playback alternate instead of running at the same time - which
-# is exactly what this device does anyway.
+# LRCLK wires in the hardware. ESPHome serialises access with a mutex, so only
+# one of them can hold the bus at a time - recording and playback alternate.
+# That is why the voice assistant must not be left running while the handset is
+# down: a microphone that never lets go means the speaker never gets the bus.
 i2s_audio:
   - id: i2s_in
     i2s_lrclk_pin: GPIO17 #WS Pin from the INMP441 Microphone
@@ -76,7 +81,11 @@ speaker:
     dac_type: external
     i2s_dout_pin: GPIO09   #  DIN Pin of the MAX98357A Audio Amplifier
     channel: mono
-    sample_rate: 48000
+    # 16 kHz is what Home Assistant's text to speech delivers, and a W48
+    # handset earpiece is bandwidth limited far below that anyway. Running the
+    # whole chain at 16 kHz mono keeps the buffers small, which matters because
+    # there is no PSRAM.
+    sample_rate: 16000
     bits_per_sample: 16bit
   # The announcement and media pipelines are not allowed to share one speaker,
   # so the mixer splits the single physical amplifier into two virtual ones.
@@ -91,15 +100,18 @@ media_player:
   - platform: speaker
     name: "Speaker"
     id: media_player_speaker
+    # Default is 1 MB, which lives in PSRAM on boards that have it. This one
+    # does not, so the allocation has to fit in internal RAM.
+    buffer_size: 64000
     announcement_pipeline:
       speaker: announcement_speaker
       format: FLAC
-      sample_rate: 48000
+      sample_rate: 16000
       num_channels: 1
     media_pipeline:
       speaker: media_speaker
       format: FLAC
-      sample_rate: 48000
+      sample_rate: 16000
       num_channels: 1
 
 voice_assistant:
@@ -120,6 +132,10 @@ voice_assistant:
         id: status_led_green
     - switch.turn_on:
         id: status_led_red
+    # Only keep listening while the handset is actually off the cradle.
+    # handset is ON when lifted, so this must be is_on - with the inverted pin
+    # logic this repository used before, the same condition was true while the
+    # handset was resting and restarted the assistant in an endless loop.
     - if:
         condition:
           binary_sensor.is_on: handset
@@ -131,23 +147,31 @@ binary_sensor:
   - platform: gpio
     pin:
       number: GPIO40 # switch from the handset
-      inverted: True
       mode:
         input: True
-        pullup: False
+        # The switch connects GPIO40 to 3V3, not to GND - see pin 1 in the
+        # Fritzing schematic. It can therefore only ever drive the pin high,
+        # and without the internal pull-down the pin floats whenever the switch
+        # is open. A pull-up here would hold the pin high permanently and the
+        # sensor would never change state at all.
+        pulldown: True
+    # Handset resting -> switch open   -> pull-down -> low  -> off -> "closed"
+    # Handset lifted  -> switch closed -> 3V3       -> high -> on  -> "open"
     name: Handset
     id: handset
     device_class: opening
     filters:
       - delayed_off: 0.3s
-    on_release:
+    # Lifting the handset starts the assistant.
+    on_press:
       then:
         - voice_assistant.start_continuous
         - switch.turn_on: status_led_red
-    on_press:
+    # Putting it back stops the assistant and silences the speaker.
+    on_release:
       then:
         - voice_assistant.stop
-        - media_player.stop: #Stops the loudspeaker to be able to hear again
+        - media_player.stop:
         - switch.turn_off: status_led_red
 
 switch:

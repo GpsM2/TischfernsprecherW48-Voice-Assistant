@@ -22,7 +22,9 @@ This project transforms the vintage "Tischfernsprecher W 48" telephone into a vo
 2. Adopt the configuration in the ESPHome dashboard and flash the device. It joins the configured network on its own; if that network is unreachable it opens its own access point and serves a captive portal, so it can be recovered without opening the housing.
 3. In Home Assistant, assign an Assist pipeline to the device. Lifting the handset starts the pipeline — there is no wake word.
 
-> **ESPHome version.** This configuration uses the current audio stack (`speaker` plus `media_player: speaker`). The older `media_player: i2s_audio` platform was **removed in ESPHome 2026.4.0**, so anything built from an earlier revision of this repository will no longer compile. The ESP-IDF framework and PSRAM are required and are already set in the configuration.
+> **ESPHome version.** This configuration uses the current audio stack (`speaker` plus `media_player: speaker`). The older `media_player: i2s_audio` platform was **removed in ESPHome 2026.4.0**, so anything built from an earlier revision of this repository will no longer compile. The ESP-IDF framework is required and is already set in the configuration.
+
+> **No PSRAM on this build.** The board is sold as an ESP32-S3 N16R8, which should mean 8 MB of octal PSRAM, but the one used here reports none: with `mode: octal` the second stage bootloader hangs before printing a single line, and with `mode: quad` the device boots and logs `PSRAM: Available: NO`. The configuration therefore ships without a `psram:` block, runs the whole audio chain at 16 kHz mono and keeps the media player buffer small enough for internal RAM. If your board does have working PSRAM, adding `psram:` back and raising `buffer_size` will give you better media playback.
 
 ### 🔄 Upgrading from an earlier revision
 
