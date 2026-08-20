@@ -24,18 +24,20 @@ This project transforms the vintage "Tischfernsprecher W 48" telephone into a vo
 2. Adopt the configuration in the ESPHome dashboard and flash the device. It joins the configured network on its own; if that network is unreachable it opens its own access point and serves a captive portal, so it can be recovered without opening the housing.
 3. In Home Assistant, assign an Assist pipeline to the device. Lifting the handset starts the pipeline — there is no wake word.
 
-> **ESPHome version.** This configuration uses the current audio stack (`speaker` plus `media_player: speaker`). The older `media_player: i2s_audio` platform was **removed in ESPHome 2026.4.0**, so anything built from an earlier revision of this repository will no longer compile. The ESP-IDF framework is required and is already set in the configuration.
+> **ESPHome version.** This configuration uses the current audio stack. The older `media_player: i2s_audio` platform was **removed in ESPHome 2026.4.0**, so anything built from an earlier revision of this repository will no longer compile. The ESP-IDF framework is required and is already set in the configuration.
 
-> **No PSRAM on this build.** The board is sold as an ESP32-S3 N16R8, which should mean 8 MB of octal PSRAM, but the one used here reports none: with `mode: octal` the second stage bootloader hangs before printing a single line, and with `mode: quad` the device boots and logs `PSRAM: Available: NO`. The configuration therefore ships without a `psram:` block, runs the whole audio chain at 16 kHz mono and keeps the media player buffer small enough for internal RAM. If your board does have working PSRAM, adding `psram:` back and raising `buffer_size` will give you better media playback.
+> **No PSRAM on this build.** The board is sold as an ESP32-S3 N16R8, which should mean 8 MB of octal PSRAM, but the one used here reports none: with `mode: octal` the second stage bootloader hangs before printing a single line, and with `mode: quad` the device boots and logs `PSRAM: Available: NO`. The configuration therefore ships without a `psram:` block and runs the whole audio chain at 16 kHz mono.
+
+> **This is a voice assistant, not a speaker.** The assistant writes its spoken answer straight to the amplifier, so there is no `media_player` entity: you cannot send music or a radio stream to the phone, and it will not show up in Music Assistant. That is deliberate. A media player needs an HTTP fetch, an audio decoder and a buffer that is a megabyte by default, all of which want PSRAM this board does not have - and a W48 handset earpiece is a narrow band electroacoustic device to begin with. If your board does have working PSRAM and you want music, add `psram:` back and swap `voice_assistant: speaker:` for a `media_player: speaker` with its own mixer.
 
 ### 🔄 Upgrading from an earlier revision
 
-Anyone who built this device before the 2026 rewrite is on the old node name `esphome-web-c7b550`. The node is now called `w48-phone`, which means Home Assistant creates a fresh set of entity IDs (`binary_sensor.w48_phone_handset`, `media_player.w48_phone_speaker`, and so on) and leaves the old ones behind as unavailable.
+Anyone who built this device before the 2026 rewrite is on the old node name `esphome-web-c7b550`. The node is now called `w48-phone`, which means Home Assistant creates a fresh set of entity IDs and leaves the old ones behind as unavailable. Note that Home Assistant prefixes the area, so an entity ends up as `binary_sensor.<area>_w48_phone_handset`.
 
 After flashing, expect to:
 
 1. Delete the orphaned entities of the old node in Home Assistant.
-2. Re-point anything that referenced the old IDs — dashboards, automations, and the player entry in Music Assistant.
+2. Re-point anything that referenced the old IDs — dashboards and automations. The old `media_player` entity is gone for good, so remove the phone from Music Assistant as well.
 3. Re-assign the Assist pipeline and the area to the device.
 
 If you would rather keep your existing entity IDs, set `substitutions: name:` back to your old node name before flashing. Everything else in this configuration works either way.

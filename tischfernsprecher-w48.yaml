@@ -8,19 +8,21 @@ esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   name_add_mac_suffix: false
-  # The speaker media player used below requires 2026.4.0 or newer.
+  # ESPHome removed the i2s_audio media player in 2026.4.0 along with the
+  # legacy I2S driver. This configuration targets the audio stack that
+  # replaced it and will not build on anything older.
   min_version: 2026.4.0
   platformio_options:
     board_build.flash_mode: dio
   project:
     name: gpsm2.tischfernsprecher-w48
-    version: '1.1.6'
+    version: '1.2.0'
 
 esp32:
   board: esp32-s3-devkitc-1
   framework:
-    # ESP-IDF is the default since ESPHome 2026.1.0 and is what the speaker
-    # media player expects. Do not switch back to arduino.
+    # ESP-IDF is the default since ESPHome 2026.1.0 and is what the current
+    # audio components expect. Do not switch back to arduino.
     type: esp-idf
 
 # No psram: block on purpose. The board is sold as an N16R8, which would mean
@@ -74,6 +76,9 @@ microphone:
     i2s_audio_id: i2s_in
     i2s_din_pin: GPIO13  #SD Pin from the INMP441 Microphone
 
+# One speaker, nothing in front of it. The voice assistant writes its spoken
+# answer here directly, so there is no media player, no mixer and no audio
+# decoder in the path - see the note on media playback in README.md.
 speaker:
   - platform: i2s_audio
     id: i2s_speaker_out
@@ -82,46 +87,22 @@ speaker:
     i2s_dout_pin: GPIO09   #  DIN Pin of the MAX98357A Audio Amplifier
     channel: mono
     # 16 kHz is what Home Assistant's text to speech delivers, and a W48
-    # handset earpiece is bandwidth limited far below that anyway. Running the
-    # whole chain at 16 kHz mono keeps the buffers small, which matters because
-    # there is no PSRAM.
+    # handset earpiece is bandwidth limited far below that anyway.
     sample_rate: 16000
     bits_per_sample: 16bit
-  # The announcement and media pipelines are not allowed to share one speaker,
-  # so the mixer splits the single physical amplifier into two virtual ones.
-  - platform: mixer
-    id: speaker_mixer
-    output_speaker: i2s_speaker_out
-    source_speakers:
-      - id: announcement_speaker
-      - id: media_speaker
-
-media_player:
-  - platform: speaker
-    name: "Speaker"
-    id: media_player_speaker
-    # Default is 1 MB, which lives in PSRAM on boards that have it. This one
-    # does not, so the allocation has to fit in internal RAM.
-    buffer_size: 64000
-    announcement_pipeline:
-      speaker: announcement_speaker
-      format: FLAC
-      sample_rate: 16000
-      num_channels: 1
-    media_pipeline:
-      speaker: media_speaker
-      format: FLAC
-      sample_rate: 16000
-      num_channels: 1
 
 voice_assistant:
   microphone: mic_i2s
+  # Speaker rather than media_player: the assistant streams the spoken answer
+  # straight to the amplifier over the API connection. That skips the HTTP
+  # fetch and the decoder a media player would need, which matters on a board
+  # without PSRAM.
+  speaker: i2s_speaker_out
   id: va
   noise_suppression_level: 2
   auto_gain: 31dBFS
   volume_multiplier: 10.0
   use_wake_word: false
-  media_player: media_player_speaker
   on_listening: #Switches the green LED on and red off when listening
     - switch.turn_on:
         id: status_led_green
@@ -167,11 +148,11 @@ binary_sensor:
       then:
         - voice_assistant.start_continuous
         - switch.turn_on: status_led_red
-    # Putting it back stops the assistant and silences the speaker.
+    # Putting it back stops the assistant and cuts any answer still playing.
     on_release:
       then:
         - voice_assistant.stop
-        - media_player.stop:
+        - speaker.stop: i2s_speaker_out
         - switch.turn_off: status_led_red
 
 switch:
