@@ -50,3 +50,11 @@ Feel free to use [my Fritzing file](Fritzing/Voice%20Assistant%20W48%20verkürzt
 
 ## 💡 Usage Notes
 Improvements are welcome! 🙌 The internal assembly could be more space-efficient, allowing the bell 🔔 to be operated with an electromagnet. A custom PCB design could also be beneficial. Ensure proper strain relief for the spiral cable. The cable I used conveniently included a rope, allowing strain relief in the handset with a screw and hot glue. 👍
+
+## 📄 License
+
+This project is licensed under the [Creative Commons Attribution-ShareAlike 4.0 International License](LICENSE) (CC BY-SA 4.0) — the ESPHome configuration, the documentation, the photos and the Fritzing file alike.
+
+You are free to share and adapt the material, including commercially, as long as you give appropriate credit and distribute your contributions under the same license.
+
+Attribution: *TischfernsprecherW48-Voice-Assistant* by [GpsM2](https://github.com/GpsM2), licensed under CC BY-SA 4.0.
