@@ -1,4 +1,6 @@
 # 📞 TischfernsprecherW48-Voice-Assistant 🗣️
+
+[![Build](https://github.com/GpsM2/TischfernsprecherW48-Voice-Assistant/actions/workflows/build.yml/badge.svg)](https://github.com/GpsM2/TischfernsprecherW48-Voice-Assistant/actions/workflows/build.yml)
 Modification of a vintage "Tischfernsprecher W 48" telephone into a HomeAssistant-compatible voice assistant device
 
 ## 📝 Detailed Description
