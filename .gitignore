@@ -3,3 +3,6 @@
 
 # Never commit real credentials - see secrets.yaml.example
 secrets.yaml
+
+# Local diagnostic builds, not part of the project
+diagnose-*.yaml
