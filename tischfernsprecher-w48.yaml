@@ -13,7 +13,7 @@ esphome:
     board_build.flash_mode: dio
   project:
     name: gpsm2.tischfernsprecher-w48
-    version: '1.1.0'
+    version: '1.1.1'
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -85,7 +85,7 @@ speaker:
   # The announcement and media pipelines are not allowed to share one speaker,
   # so the mixer splits the single physical amplifier into two virtual ones.
   - platform: mixer
-    id: mixer_speaker
+    id: speaker_mixer
     output_speaker: i2s_speaker_out
     source_speakers:
       - id: announcement_speaker
